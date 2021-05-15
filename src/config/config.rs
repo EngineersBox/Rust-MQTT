@@ -20,11 +20,22 @@ pub struct Client {
     pub timeout: u64,
 }
 
+pub struct SubscriberConnection {
+    pub retries: u64,
+    pub retry_duration: u64,
+    pub topics: Vec<String>,
+}
+
+pub struct PublisherConnection {
+    pub topics: Vec<String>,
+}
+
 pub struct Config {
     pub broker: String,
-    pub topics: Vec<String>,
     pub creds: Credentials,
     pub client: Client,
+    pub subscriber_connection: SubscriberConnection,
+    pub publisher_connection: PublisherConnection,
 }
 
 fn read_config_file(filename: &str) -> HashMap<String, String> {
@@ -64,7 +75,6 @@ impl Config {
             broker: String::from("tcp://")
                 .add(get_property::<&str>(&properties, "broker.host"))
                 .add(get_property::<&str>(&properties, "broker.port")),
-            topics: list_split_regex.split(get_property::<&str>(&properties, "topics")).collect::<Vec<String>>(),
             creds: Credentials {
                 username: get_property::<String>(&properties, "creds.username"),
                 password: get_property::<String>(&properties, "creds.password"),
@@ -73,6 +83,14 @@ impl Config {
                 id: get_property::<String>(&properties, "client.id"),
                 keep_alive:  get_property::<u64>(&properties, "client.keep_alive"),
                 timeout: get_property::<u64>(&properties, "client.timeout"),
+            },
+            subscriber_connection: SubscriberConnection {
+                retries: get_property::<u64>(&properties, "subscriber_connection.retries"),
+                retry_duration: get_property::<u64>(&properties, "subscriber_connection.retry_duration"),
+                topics: list_split_regex.split(get_property::<&str>(&properties, "subscriber_connection.topics")).collect::<Vec<String>>(),
+            },
+            publisher_connection: PublisherConnection {
+                topics: list_split_regex.split(get_property::<&str>(&properties, "publisher_connection.topics")).collect::<Vec<String>>(),
             }
         }
     }

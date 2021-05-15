@@ -7,6 +7,7 @@ use std::{
 use crate::config::config::Config;
 use self::mqtt::CreateOptions;
 use slog::Logger;
+use crate::connector::connector::Connector;
 
 #[macro_use]
 extern crate slog;
@@ -28,7 +29,10 @@ impl Publisher {
             client: Default::default(),
         }
     }
-    pub fn initialize(&mut self) {
+}
+
+impl Connector for Publisher {
+    fn initialize(&mut self) {
         let create_opts: CreateOptions = mqtt::CreateOptionsBuilder::new()
             .server_uri(self.config.broker.clone())
             .client_id(self.config.creds.client_id.clone())
@@ -47,13 +51,13 @@ impl Publisher {
         debug!(self.logger, "Created connection options: {:?}", self.conn_opts);
         info!(self.logger, "Initialised client");
     }
-    pub fn connect(&self) {
+    fn connect(&self) {
         if let Err(e) = self.client.connect(conn_opts) {
             panic!("Unable to connect:\n\t{:?}", e);
         }
         info!(self.logger "Connected to broker");
     }
-    pub fn disconnect(&self) {
+    fn disconnect(&self) {
         self.client.disconnect(None);
         info!(self.logger, "Disconnect from the broker");
     }
