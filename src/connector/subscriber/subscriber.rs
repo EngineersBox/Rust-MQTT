@@ -7,28 +7,27 @@ use crate::config::config::Config;
 use slog::Logger;
 use crate::connector::connector::Connector;
 use std::sync::mpsc::Receiver;
+use std::sync::Arc;
 
 pub struct Subscriber {
-    config: Box<Config>,
+    config: Arc<Config>,
     logger: Logger,
     conn_opts: mqtt::ConnectOptions,
     subscribed_topics: Vec<String>,
     pub client: mqtt::Client,
-    pub consumer: Option<Receiver<Option<mqtt::Message>>>
 }
 
 impl Subscriber {
-    pub fn new(config: Box<Config>, logger: &Logger) -> Subscriber {
+    pub fn new(config: Arc<Config>, logger: &Logger) -> Subscriber {
         Subscriber {
-            config,
+            config: config.clone(),
             logger: logger.new(o!("Subscriber" => process::id())),
             conn_opts: Default::default(),
-            subscribed_topics: vec!(),
+            subscribed_topics: config.subscriber_connection.topics.clone(),
             client: mqtt::Client::new(mqtt::CreateOptions::default()).unwrap(),
-            consumer: Option::None,
         }
     }
-    fn try_reconnect(&self) -> bool {
+    pub fn try_reconnect(&self) -> bool {
         info!(self.logger, "Connection lost. Waiting to retry connection");
         for _ in 0..self.config.subscriber_connection.retries {
             thread::sleep(Duration::from_millis(self.config.subscriber_connection.retry_duration));
@@ -40,14 +39,16 @@ impl Subscriber {
         error!(self.logger, "Unable to reconnect after several attempts.");
         false
     }
-    fn subscribe_topics(&mut self, topics: &Vec<String>, qos: &[i32]) -> bool {
-        if let Err(e) = self.client.subscribe_many(topics.as_slice(), qos) {
-            error!(self.logger, "Could not subscribe to topics {:?}: {:?}", topics, e);
+    pub fn subscribe_topics(&self, qos: &[i32]) -> bool {
+        if let Err(e) = self.client.subscribe_many(self.subscribed_topics.as_slice(), qos) {
+            error!(self.logger, "Could not subscribe to topics {:?}: {:?}", self.subscribed_topics, e);
             return false;
         }
-        info!(self.logger, "Subscribed to topics {:?} for QoS {:?}", topics, qos);
-        self.subscribed_topics = topics.clone();
+        info!(self.logger, "Subscribed to topics {:?} for QoS {:?}", self.subscribed_topics, qos);
         true
+    }
+    pub fn consume(&mut self) -> Receiver<Option<mqtt::Message>> {
+        return self.client.start_consuming();
     }
 }
 
@@ -67,7 +68,7 @@ impl Connector for Subscriber {
             .finalize();
         self.conn_opts = mqtt::ConnectOptionsBuilder::new()
             .keep_alive_interval(Duration::from_millis(self.config.client.keep_alive))
-            .clean_session(true)
+            .clean_session(false)
             .user_name(self.config.creds.username.clone())
             .password(self.config.creds.password.clone())
             .connect_timeout(Duration::from_millis(self.config.client.timeout))
@@ -76,13 +77,22 @@ impl Connector for Subscriber {
         debug!(self.logger, "Created connection options");
         info!(self.logger, "Initialised client");
     }
-
     fn connect(&mut self) {
-        self.consumer = Option::Some(self.client.start_consuming());
-        if let Err(e) = self.client.connect(self.conn_opts.clone()) {
-            panic!("Unable to connect:\n\t{:?}", e);
+        match self.client.connect(self.conn_opts.clone()) {
+            Ok(rsp) => {
+                if let Some(conn_rsp) = rsp.connect_response() {
+                    info!(
+                        self.logger,
+                        "Connected to: '{}' with MQTT version {}",
+                        conn_rsp.server_uri, conn_rsp.mqtt_version
+                    );
+                }
+            }
+            Err(e) => {
+                error!(self.logger, "Unable to connect to [{}]: {:?}", self.config.broker, e);
+                panic!("{:?}", e);
+            }
         }
-        info!(self.logger, "Connected to broker");
     }
     fn disconnect(&mut self) {
         if self.client.is_connected() {
@@ -99,7 +109,7 @@ impl Connector for Subscriber {
     // let mut subscriber: Subscriber;
     // subscriber.initialize();
     // subscriber.connect();
-    // // subscriber.subscribe_topics();
+    // subscriber.subscribe_topics();
     //
     // println!("Processing requests...");
     // for msg in subscriber.consumer.unwrap().iter() {

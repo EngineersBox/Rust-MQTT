@@ -55,7 +55,7 @@ fn read_config_file(filename: &str, logger: &Logger) -> HashMap<String, String> 
     }
 }
 
-fn get_property<T: FromStr>(properties: &HashMap<String, String>, key: &str) -> T {
+fn get_property<T: FromStr>(properties: &HashMap<String, String>, key: &str, logger: &Logger) -> T {
     if key.is_empty() {
         panic!(exceptions::ConfigPropertiesError::InvalidConfigPropertyKeyError{
             0:exceptions::InvalidConfigPropertyKeyError{key: String::from(key)},
@@ -63,6 +63,7 @@ fn get_property<T: FromStr>(properties: &HashMap<String, String>, key: &str) -> 
     }
     let value: Option<&String> = properties.get(key);
     if value.is_none() {
+        error!(logger, "Could not find property: {}", key);
         panic!(exceptions::ConfigPropertiesError::MissingConfigPropertyError{
             0:exceptions::MissingConfigPropertyError{property: String::from(key)},
         });
@@ -79,25 +80,27 @@ impl Config {
         let properties: HashMap<String, String> = read_config_file(filename ,logger);
         let list_split_regex: Regex = Regex::new(r",(\s)?").expect("Could not compile regex");
         Config {
-            broker: String::from("tcp://")
-                .add(get_property::<String>(&properties, "broker.host").as_str())
-                .add(get_property::<String>(&properties, "broker.port").as_str()),
+            broker: format!(
+                "tcp://{}:{}",
+                get_property::<String>(&properties, "broker.host", logger),
+                get_property::<String>(&properties, "broker.port", logger),
+            ),
             creds: Credentials {
-                username: get_property::<String>(&properties, "creds.username"),
-                password: get_property::<String>(&properties, "creds.password"),
+                username: get_property::<String>(&properties, "creds.username", logger),
+                password: get_property::<String>(&properties, "creds.password", logger),
             },
             client: Client {
-                id: get_property::<String>(&properties, "client.id"),
-                keep_alive:  get_property::<u64>(&properties, "client.keep_alive"),
-                timeout: get_property::<u64>(&properties, "client.timeout"),
+                id: get_property::<String>(&properties, "client.id", logger),
+                keep_alive:  get_property::<u64>(&properties, "client.keep_alive", logger),
+                timeout: get_property::<u64>(&properties, "client.timeout", logger),
             },
             subscriber_connection: SubscriberConnection {
-                retries: get_property::<u64>(&properties, "subscriber_connection.retries"),
-                retry_duration: get_property::<u64>(&properties, "subscriber_connection.retry_duration"),
-                topics: list_split_regex.split(get_property::<String>(&properties, "subscriber_connection.topics").as_str()).map(|p| String::from(p)).collect::<Vec<String>>(),
+                retries: get_property::<u64>(&properties, "subscriber_connection.retries", logger),
+                retry_duration: get_property::<u64>(&properties, "subscriber_connection.retry_duration", logger),
+                topics: list_split_regex.split(get_property::<String>(&properties, "subscriber_connection.topics", logger).as_str()).map(|p| String::from(p)).collect::<Vec<String>>(),
             },
             publisher_connection: PublisherConnection {
-                topics: list_split_regex.split(get_property::<String>(&properties, "publisher_connection.topics").as_str()).map(|p| String::from(p)).collect::<Vec<String>>(),
+                topics: list_split_regex.split(get_property::<String>(&properties, "publisher_connection.topics", logger).as_str()).map(|p| String::from(p)).collect::<Vec<String>>(),
             }
         }
     }

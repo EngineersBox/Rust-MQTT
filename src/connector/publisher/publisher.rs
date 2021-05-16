@@ -5,16 +5,17 @@ use std::{
 use crate::config::config::Config;
 use slog::Logger;
 use crate::connector::connector::Connector;
+use std::sync::Arc;
 
-struct Publisher {
-    config: Box<Config>,
+pub struct Publisher {
+    config: Arc<Config>,
     logger: Logger,
     conn_opts: mqtt::ConnectOptions,
     pub client: mqtt::Client
 }
 
 impl Publisher {
-    pub fn new(config: Box<Config>, logger: &Logger) -> Publisher {
+    pub fn new(config: Arc<Config>, logger: &Logger) -> Publisher {
         Publisher {
             config,
             logger: logger.new(o!("Publisher" => process::id())),

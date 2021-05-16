@@ -7,7 +7,7 @@ use slog_async::{Async, OverflowStrategy};
 use slog_json::Json;
 use slog_term::{FullFormat, TermDecorator};
 
-fn initialize_logging() ->  slog::Logger {
+pub fn initialize_logging() ->  Logger {
     let log_path: &str = "logs/";
     let directory_creation_message: &str;
     match fs::create_dir(log_path) {
