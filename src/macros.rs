@@ -37,11 +37,11 @@ macro_rules! if_let_ok {
 
 #[macro_export]
 macro_rules! try_except_return {
-    ($connection_statement:expr, $msg:literal) => {
+    ($connection_statement:expr, $msg:literal, $logger:expr) => {
         match $connection_statement {
             Ok(value) => value,
             Err(e) => {
-                error!(crate::LOGGER, "{}: {}", $msg, e);
+                error!($logger, "{}: {}", $msg, e);
                 return;
             },
         }
@@ -50,11 +50,11 @@ macro_rules! try_except_return {
 
 #[macro_export]
 macro_rules! try_except_return_default {
-    ($connection_statement:expr, $msg:literal, $default_value:expr) => {
+    ($connection_statement:expr, $msg:literal, $default_value:expr, $logger:expr) => {
         match $connection_statement {
             Ok(value) => value,
             Err(e) => {
-                error!(crate::LOGGER, "{}: {}", $msg, e);
+                error!($logger, "{}: {}", $msg, e);
                 $default_value
             },
         }

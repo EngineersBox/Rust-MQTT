@@ -7,13 +7,6 @@ use slog_async::{Async, OverflowStrategy};
 use slog_json::Json;
 use slog_term::{FullFormat, TermDecorator};
 
-#[macro_use]
-extern crate slog;
-extern crate slog_term;
-extern crate slog_async;
-extern crate slog_json;
-extern crate regex;
-
 fn initialize_logging() ->  slog::Logger {
     let log_path: &str = "logs/";
     let directory_creation_message: &str;

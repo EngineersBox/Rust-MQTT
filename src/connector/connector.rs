@@ -1,5 +1,5 @@
 pub trait Connector {
-    fn initialize(&self);
-    fn connect(&self);
-    fn disconnect(&self);
+    fn initialize(&mut self);
+    fn connect(&mut self);
+    fn disconnect(&mut self);
 }
