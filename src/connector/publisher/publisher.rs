@@ -9,16 +9,16 @@ use std::sync::Arc;
 
 pub struct Publisher {
     config: Arc<Config>,
-    logger: Logger,
+    pub logger: Logger,
     conn_opts: mqtt::ConnectOptions,
     pub client: mqtt::Client
 }
 
 impl Publisher {
-    pub fn new(config: Arc<Config>, logger: &Logger) -> Publisher {
+    pub fn new(config: Arc<Config>, logger: Logger) -> Publisher {
         Publisher {
             config,
-            logger: logger.new(o!("Publisher" => process::id())),
+            logger,
             conn_opts: Default::default(),
             client: mqtt::Client::new(mqtt::CreateOptions::default()).unwrap(),
         }
@@ -29,7 +29,7 @@ impl Connector for Publisher {
     fn initialize(&mut self) {
         let create_opts: mqtt::CreateOptions = mqtt::CreateOptionsBuilder::new()
             .server_uri(self.config.broker.clone())
-            .client_id(self.config.client.id.clone())
+            .client_id(self.config.publisher_connection.id.clone())
             .finalize();
         self.client = mqtt::Client::new(create_opts).unwrap_or_else(|err| {
             panic!("Error creating the client: {:?}", err);

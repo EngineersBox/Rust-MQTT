@@ -7,21 +7,23 @@ use crate::config::config::Config;
 use slog::Logger;
 use crate::connector::connector::Connector;
 use std::sync::mpsc::Receiver;
+
+use thread_id;
 use std::sync::Arc;
 
 pub struct Subscriber {
     config: Arc<Config>,
-    logger: Logger,
+    pub logger: Logger,
     conn_opts: mqtt::ConnectOptions,
     subscribed_topics: Vec<String>,
     pub client: mqtt::Client,
 }
 
 impl Subscriber {
-    pub fn new(config: Arc<Config>, logger: &Logger) -> Subscriber {
+    pub fn new(config: Arc<Config>, logger: Logger) -> Subscriber {
         Subscriber {
             config: config.clone(),
-            logger: logger.new(o!("Subscriber" => process::id())),
+            logger,
             conn_opts: Default::default(),
             subscribed_topics: config.subscriber_connection.topics.clone(),
             client: mqtt::Client::new(mqtt::CreateOptions::default()).unwrap(),
@@ -56,7 +58,7 @@ impl Connector for Subscriber {
     fn initialize(&mut self) {
         let create_opts: mqtt::CreateOptions = mqtt::CreateOptionsBuilder::new()
             .server_uri(self.config.broker.clone())
-            .client_id(self.config.client.id.clone())
+            .client_id(self.config.subscriber_connection.id.clone())
             .finalize();
         self.client = mqtt::Client::new(create_opts).unwrap_or_else(|err| {
             panic!("Error creating the client: {:?}", err);

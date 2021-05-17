@@ -17,18 +17,19 @@ pub struct Credentials {
 }
 
 pub struct Client {
-    pub id: String,
     pub keep_alive: u64,
     pub timeout: u64,
 }
 
 pub struct SubscriberConnection {
+    pub id: String,
     pub retries: u64,
     pub retry_duration: u64,
     pub topics: Vec<String>,
 }
 
 pub struct PublisherConnection {
+    pub id: String,
     pub topics: Vec<String>,
 }
 
@@ -90,16 +91,17 @@ impl Config {
                 password: get_property::<String>(&properties, "creds.password", logger),
             },
             client: Client {
-                id: get_property::<String>(&properties, "client.id", logger),
                 keep_alive:  get_property::<u64>(&properties, "client.keep_alive", logger),
                 timeout: get_property::<u64>(&properties, "client.timeout", logger),
             },
             subscriber_connection: SubscriberConnection {
+                id: get_property::<String>(&properties, "subscriber_connection.id", logger),
                 retries: get_property::<u64>(&properties, "subscriber_connection.retries", logger),
                 retry_duration: get_property::<u64>(&properties, "subscriber_connection.retry_duration", logger),
                 topics: list_split_regex.split(get_property::<String>(&properties, "subscriber_connection.topics", logger).as_str()).map(|p| String::from(p)).collect::<Vec<String>>(),
             },
             publisher_connection: PublisherConnection {
+                id: get_property::<String>(&properties, "publisher_connection.id", logger),
                 topics: list_split_regex.split(get_property::<String>(&properties, "publisher_connection.topics", logger).as_str()).map(|p| String::from(p)).collect::<Vec<String>>(),
             }
         }
