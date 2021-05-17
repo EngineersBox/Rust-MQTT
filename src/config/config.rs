@@ -7,7 +7,6 @@ use crate::try_except_return_default;
 use crate::config::exceptions;
 use std::path::Path;
 use regex::Regex;
-use std::ops::Add;
 use slog::Logger;
 use std::str::FromStr;
 

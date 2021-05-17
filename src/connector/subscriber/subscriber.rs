@@ -1,6 +1,5 @@
 use std::{
     thread,
-    process,
     time::Duration
 };
 use crate::config::config::Config;
@@ -8,7 +7,6 @@ use slog::{Logger, Level};
 use crate::connector::connector::Connector;
 use std::sync::mpsc::Receiver;
 
-use thread_id;
 use std::sync::Arc;
 
 pub struct Subscriber {
@@ -85,7 +83,7 @@ impl Connector for Subscriber {
                 if let Some(conn_rsp) = rsp.connect_response() {
                     info!(
                         self.logger,
-                        "Connected to: '{}' with MQTT version {}",
+                        "Connected to '{}' with MQTT version {}",
                         conn_rsp.server_uri, conn_rsp.mqtt_version
                     );
                 }

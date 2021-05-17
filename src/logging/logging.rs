@@ -3,12 +3,14 @@ use std::{fs, io, thread};
 use std::sync::Mutex;
 use std::io::Write;
 
-use slog::{Drain, Duplicate, Fuse, Logger, Record, KV};
+use slog::{Drain, Duplicate, Fuse, Logger, Record};
 use slog_async::{Async, OverflowStrategy};
 use slog_json::Json;
-use slog_term::{FullFormat, TermDecorator, ThreadSafeTimestampFn, RecordDecorator, CountingWriter, Serializer, PlainRecordDecorator, CompactFormatSerializer};
+use slog_term::{FullFormat, TermDecorator, ThreadSafeTimestampFn, RecordDecorator, CountingWriter};
 use regex::Regex;
 use lazy_static::lazy_static;
+
+use crate::get_current_thread_id;
 
 lazy_static! {
     static ref MODULE_SEPARATOR_REGEX: Regex = Regex::new(r"::").expect("Could not compile module separator regex");
@@ -21,13 +23,13 @@ pub fn print_msg_header(
     use_file_location: bool,
 ) -> io::Result<bool> {
     rd.start_whitespace()?;
-    write!(rd, "[");
+    write!(rd, "[")?;
 
     rd.start_timestamp()?;
     fn_timestamp(&mut rd)?;
 
     rd.start_whitespace()?;
-    write!(rd, "] [");
+    write!(rd, "] [")?;
 
     rd.start_value()?;
     let split_module: Vec<String> = MODULE_SEPARATOR_REGEX
@@ -38,7 +40,7 @@ pub fn print_msg_header(
         rd,
         "{}",
         split_module.get(split_module.len() - 1).unwrap(),
-    );
+    )?;
 
     rd.start_whitespace()?;
     write!(rd, "] ")?;
@@ -110,6 +112,6 @@ pub fn initialize_logging() ->  Logger {
         .fuse();
     let log: Logger = Logger::root(both, o!());
 
-    info!(log,"{}", directory_creation_message);
+    info!(log.new(get_current_thread_id!()), "{}", directory_creation_message);
     log
 }

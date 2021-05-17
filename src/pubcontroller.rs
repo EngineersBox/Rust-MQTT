@@ -19,18 +19,15 @@ extern crate regex;
 extern crate thread_id;
 
 use slog::{Logger, Level};
-use std::sync::mpsc::{Iter, Receiver};
-use std::{process, thread};
+use std::sync::mpsc::Receiver;
+use std::thread;
 use mqtt::Message;
-use std::borrow::{Borrow, BorrowMut};
-use futures::executor::block_on;
 use std::sync::Arc;
 
 fn main() {
     let logger: Logger = initialize_logging();
     let config: Arc<Config> = Arc::new(Config::new("resource/config.properties", &logger.new(get_current_thread_id!())));
     // let publisher: Publisher = Publisher::new(config.clone(), &logger);
-    let log: Logger = logger.new(get_current_thread_id!());
     thread::spawn({
         let t_logger: Logger = logger.clone();
         let t_config: Arc<Config> = config.clone();
@@ -67,7 +64,7 @@ fn main() {
             for num in 0..5 {
                 let content =  "Hello world! ".to_string() + &num.to_string();
                 publisher.log_at(Level::Debug, format!("Message: {:?}", content.clone()).as_str());
-                let mut msg = mqtt::Message::new("request/qos", content.clone(), 1);
+                let msg = mqtt::Message::new("request/qos", content.clone(), 1);
                 publisher.log_at(Level::Debug, "Publishing messages on the request/qos topic");
                 let tok = publisher.client.publish(msg);
 

@@ -1,6 +1,5 @@
 use std::{
     time::Duration,
-    process,
 };
 use crate::config::config::Config;
 use slog::{Logger, Level};
@@ -32,7 +31,8 @@ impl Connector for Publisher {
             .client_id(self.config.publisher_connection.id.clone())
             .finalize();
         self.client = mqtt::Client::new(create_opts).unwrap_or_else(|err| {
-            panic!("Error creating the client: {:?}", err);
+            error!(self.logger, "Could not create client");
+            panic!("{:?}", err);
         });
         debug!(self.logger, "Initialised client with options");
         self.conn_opts = mqtt::ConnectOptionsBuilder::new()
@@ -47,12 +47,19 @@ impl Connector for Publisher {
     }
     fn connect(&mut self) {
         if let Err(e) = self.client.connect(self.conn_opts.clone()) {
-            panic!("Unable to connect:\n\t{:?}", e);
+            error!(self.logger, "Unable to connect to {}", self.config.broker);
+            panic!("{:?}", e);
         }
         info!(self.logger, "Connected to broker");
     }
     fn disconnect(&mut self) {
-        self.client.disconnect(None);
+        match self.client.disconnect(None) {
+            Ok(()) => {}
+            Err(e) => {
+                error!(self.logger, "Could not disconnect from broker");
+                panic!("{:?}", e);
+            }
+        };
         info!(self.logger, "Disconnect from the broker");
     }
     fn log_at(&self, level: Level, msg: &str) {
