@@ -18,7 +18,7 @@ extern crate slog_json;
 extern crate regex;
 extern crate thread_id;
 
-use slog::Logger;
+use slog::{Logger, Level};
 use std::sync::mpsc::{Iter, Receiver};
 use std::{process, thread};
 use mqtt::Message;
@@ -41,13 +41,13 @@ fn main() {
             subscriber.connect();
             subscriber.subscribe_topics(&[1, 1]);
 
-            info!(subscriber.logger, "Processing requests...");
+            subscriber.log_at(Level::Info, "Processing requests...");
             for msg in receiver.iter() {
                 if let Some(msg) = msg {
-                    info!(subscriber.logger, "INCOMING MESSAGE: {}", msg);
+                    subscriber.log_at(Level::Info, format!("INCOMING MESSAGE: {}", msg).as_str());
                 } else if !subscriber.client.is_connected() {
                     if subscriber.try_reconnect() {
-                        info!(subscriber.logger, "Resubscribe topics...");
+                        subscriber.log_at(Level::Info, "Resubscribing to topics...");
                         subscriber.subscribe_topics(&[1, 1]);
                     } else {
                         break;
@@ -66,13 +66,13 @@ fn main() {
             publisher.connect();
             for num in 0..5 {
                 let content =  "Hello world! ".to_string() + &num.to_string();
-                debug!(publisher.logger, "Message: {:?}", content.clone());
+                publisher.log_at(Level::Debug, format!("Message: {:?}", content.clone()).as_str());
                 let mut msg = mqtt::Message::new("request/qos", content.clone(), 1);
-                debug!(publisher.logger, "Publishing messages on the {} topic", "request/qos");
+                publisher.log_at(Level::Debug, "Publishing messages on the request/qos topic");
                 let tok = publisher.client.publish(msg);
 
                 if let Err(e) = tok {
-                    error!(publisher.logger, "Error sending message: {:?}", e);
+                    publisher.log_at(Level::Error, format!("Error sending message: {:?}", e).as_str());
                     break;
                 }
             }

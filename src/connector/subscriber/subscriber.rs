@@ -4,7 +4,7 @@ use std::{
     time::Duration
 };
 use crate::config::config::Config;
-use slog::Logger;
+use slog::{Logger, Level};
 use crate::connector::connector::Connector;
 use std::sync::mpsc::Receiver;
 
@@ -103,6 +103,16 @@ impl Connector for Subscriber {
             info!(self.logger, "Disconnected from the broker");
         } else {
             info!(self.logger, "Already disconnected from broker, ignoring disconnect call")
+        }
+    }
+    fn log_at(&self, level: Level, msg: &str) {
+        match level {
+            Level::Critical => crit!(self.logger, "{}", msg),
+            Level::Error => error!(self.logger, "{}", msg),
+            Level::Warning => warn!(self.logger, "{}", msg),
+            Level::Info => info!(self.logger, "{}", msg),
+            Level::Debug => debug!(self.logger, "{}", msg),
+            Level::Trace => trace!(self.logger, "{}", msg),
         }
     }
 }

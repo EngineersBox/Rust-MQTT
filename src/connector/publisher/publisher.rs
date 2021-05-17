@@ -3,7 +3,7 @@ use std::{
     process,
 };
 use crate::config::config::Config;
-use slog::Logger;
+use slog::{Logger, Level};
 use crate::connector::connector::Connector;
 use std::sync::Arc;
 
@@ -54,6 +54,16 @@ impl Connector for Publisher {
     fn disconnect(&mut self) {
         self.client.disconnect(None);
         info!(self.logger, "Disconnect from the broker");
+    }
+    fn log_at(&self, level: Level, msg: &str) {
+        match level {
+            Level::Critical => crit!(self.logger, "{}", msg),
+            Level::Error => error!(self.logger, "{}", msg),
+            Level::Warning => warn!(self.logger, "{}", msg),
+            Level::Info => info!(self.logger, "{}", msg),
+            Level::Debug => debug!(self.logger, "{}", msg),
+            Level::Trace => trace!(self.logger, "{}", msg),
+        }
     }
 }
 
