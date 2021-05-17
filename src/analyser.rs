@@ -20,6 +20,5 @@ use std::sync::Arc;
 
 fn main() {
     let logger: Logger = initialize_logging();
-    let config: Arc<Config> = Arc::new(Config::new("resource/config.properties", &logger));
-    let subscriber: Subscriber = Subscriber::new(config.clone(), &logger);
+    let config: Arc<Config> = Arc::new(Config::new("resource/config.properties", &logger.new(get_current_thread_id!())));
 }
