@@ -46,7 +46,7 @@ archive_logs:
 ifeq (,$(wildcard $(LOGS_DIR)/*.log))
 	@echo "$(RED)$(BOLD)No logs to archive$(RESET)"
 else
-	-@zip -pr logs/archive-$(DATE).zip $(LOGS_DIR)/*.log | xargs -L 1 echo " [$(GREEN)+$(WHITE)]"
+	-@zip -pr logs/archive-$(DATE).zip $(LOGS_DIR)/*.log | xargs -L 1 echo " [$(GREEN)+$(WHITE)] $0 to archive"
 endif
 	@echo '--------------------------------'
 	@make -f Makefile clean_logs

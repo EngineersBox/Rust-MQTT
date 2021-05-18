@@ -5,7 +5,9 @@ mod connector;
 
 use logging::logging::initialize_logging;
 use config::config::Config;
+use connector::publisher::publisher::Publisher;
 use connector::subscriber::subscriber::Subscriber;
+use crate::connector::connector::Connector;
 
 #[macro_use]
 extern crate slog;
@@ -14,9 +16,14 @@ extern crate slog_term;
 extern crate slog_async;
 extern crate slog_json;
 extern crate regex;
+extern crate thread_id;
 
-use slog::Logger;
+use slog::{Logger, Level};
+use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc;
+use std::thread;
 use std::sync::Arc;
+use std::thread::JoinHandle;
 
 fn main() {
     let logger: Logger = initialize_logging();
