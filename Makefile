@@ -26,7 +26,7 @@ clean_logs:
 ifeq (,$(wildcard $(LOGS_DIR)/*.log))
 	@echo "$(RED)$(BOLD)No files to remove$(RESET)"
 else
-	-@rm -rvf $(LOGS_DIR)/*.log
+	-@rm -rvf $(LOGS_DIR)/*.log | xargs -L 1 echo " [$(RED)-$(WHITE)]"
 endif
 	@echo '--------------------------------'
 
@@ -36,7 +36,7 @@ clean_log_archives:
 ifeq (,$(wildcard $(LOGS_DIR)/*.zip))
 	@echo "$(RED)$(BOLD)No files to remove$(RESET)"
 else
-	-@rm -rvf $(LOGS_DIR)/*.zip
+	-@rm -rvf $(LOGS_DIR)/*.zip | xargs -L 1 echo " [$(RED)-$(WHITE)]"
 endif
 	@echo '--------------------------------'
 
@@ -46,7 +46,7 @@ archive_logs:
 ifeq (,$(wildcard $(LOGS_DIR)/*.log))
 	@echo "$(RED)$(BOLD)No logs to archive$(RESET)"
 else
-	-@zip -pr logs/archive-$(DATE).zip $(LOGS_DIR)/*.log
+	-@zip -pr logs/archive-$(DATE).zip $(LOGS_DIR)/*.log | xargs -L 1 echo " [$(GREEN)+$(WHITE)]"
 endif
 	@echo '--------------------------------'
 	@make -f Makefile clean_logs

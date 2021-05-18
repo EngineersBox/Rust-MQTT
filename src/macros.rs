@@ -62,13 +62,6 @@ macro_rules! try_except_return_default {
 }
 
 #[macro_export]
-macro_rules! inc {
-    ($variable:expr) => {
-        $variable += 1;
-    }
-}
-
-#[macro_export]
 macro_rules! option_same_block {
     ($conditional:expr, $some_statement:expr) => {
         if $conditional {
