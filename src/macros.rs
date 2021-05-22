@@ -77,3 +77,46 @@ macro_rules! get_current_thread_id {
         o!("thread-id" => format!("{:?}", thread::current().id()))
     }
 }
+
+#[macro_export]
+macro_rules! join_threads {
+    ($threads:expr, $thread_logger:expr) => {
+        for t in $threads {
+            match t.join() {
+                Ok(_) => {},
+                Err(e) => {
+                    crit!($thread_logger, "Handler thread panicked while joining");
+                    panic!("Join panic reason: {:?}", e);
+                }
+            }
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! try_except_with_log_action {
+    ($matcher:expr, $level:expr, $msg:literal, $t_tx:expr, $log_to:expr) => {
+        match $matcher {
+            Ok(value) => value,
+            Err(e) => {
+                $log_to.log_at($level,  format!("{}: {}", $msg, e).as_str());
+                drop($t_tx.clone());
+                return;
+            },
+        }
+    }
+}
+#[macro_export]
+macro_rules! message_range_check {
+    ($range:expr, $target_value:expr, $target_name:expr, $current:expr, $log_to:expr) => {
+        if $range.contains(&$target_value) {
+            $current = $target_value;
+            if $target_name == "QoS" {
+                continue;
+            }
+        } else if $target_value != -1 {
+            $log_to.log_at(Level::Error, format!("{} was not within range {:?}: {}", $target_name, $range, $target_value).as_str());
+            continue;
+        }
+    }
+}

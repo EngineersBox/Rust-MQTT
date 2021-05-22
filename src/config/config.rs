@@ -18,6 +18,7 @@ pub struct Credentials {
 pub struct Client {
     pub keep_alive: u64,
     pub timeout: u64,
+    pub clean_session: bool,
 }
 
 pub struct SubscriberConnection {
@@ -30,6 +31,7 @@ pub struct SubscriberConnection {
 pub struct PublisherConnection {
     pub id: String,
     pub topics: Vec<String>,
+    pub message_quantity: i32,
 }
 
 pub struct Config {
@@ -92,6 +94,7 @@ impl Config {
             client: Client {
                 keep_alive:  get_property::<u64>(&properties, "client.keep_alive", logger),
                 timeout: get_property::<u64>(&properties, "client.timeout", logger),
+                clean_session: get_property::<bool>(&properties, "client.clean_session", logger),
             },
             subscriber_connection: SubscriberConnection {
                 id: get_property::<String>(&properties, "subscriber_connection.id", logger),
@@ -102,6 +105,7 @@ impl Config {
             publisher_connection: PublisherConnection {
                 id: get_property::<String>(&properties, "publisher_connection.id", logger),
                 topics: list_split_regex.split(get_property::<String>(&properties, "publisher_connection.topics", logger).as_str()).map(|p| String::from(p)).collect::<Vec<String>>(),
+                message_quantity: get_property::<i32>(&properties, "publisher_connection.message_quantity", logger),
             }
         }
     }

@@ -75,15 +75,15 @@ pub fn timestamp_utc(io: &mut dyn io::Write) -> io::Result<()> {
     )
 }
 
-pub fn initialize_logging() ->  Logger {
-    let log_path: &str = "logs/";
+pub fn initialize_logging(prefix: String) ->  Logger {
+    let log_path: String = String::from("logs/");
     let directory_creation_message: &str;
-    match fs::create_dir(log_path) {
+    match fs::create_dir(log_path.as_str()) {
         Ok(_) => { directory_creation_message = "Created logging directory"; },
         Err(_) => { directory_creation_message = "Logging directory already exists, skipping";}
     }
 
-    let log_file_path: String = format!("{}{}{}",log_path,chrono::Utc::now().to_string(),".log");
+    let log_file_path: String = format!("{}{}{}",(log_path + prefix.as_str()).as_str(),chrono::Utc::now().to_string(),".log");
     let file: File = OpenOptions::new()
         .create(true)
         .write(true)

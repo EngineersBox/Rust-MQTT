@@ -13,7 +13,7 @@ pub struct Subscriber {
     config: Arc<Config>,
     pub logger: Logger,
     conn_opts: mqtt::ConnectOptions,
-    subscribed_topics: Vec<String>,
+    pub subscribed_topics: Vec<String>,
     pub client: mqtt::Client,
 }
 
@@ -28,15 +28,16 @@ impl Subscriber {
         }
     }
     pub fn try_reconnect(&self) -> bool {
-        info!(self.logger, "Connection lost. Waiting to retry connection");
-        for _ in 0..self.config.subscriber_connection.retries {
+        info!(self.logger, "Connection lost. Attempting to reconnect");
+        for i in 0..self.config.subscriber_connection.retries {
             thread::sleep(Duration::from_millis(self.config.subscriber_connection.retry_duration));
+            info!(self.logger, "Reconnect attempt {} of {}", i + 1, self.config.subscriber_connection.retries);
             if self.client.reconnect().is_ok() {
                 info!(self.logger, "Successfully reconnected");
                 return true;
             }
         }
-        error!(self.logger, "Unable to reconnect after several attempts.");
+        error!(self.logger, "Unable to reconnect after {} attempts.", self.config.subscriber_connection.retries);
         false
     }
     pub fn subscribe_topics(&self, qos: &[i32]) -> bool {
@@ -68,14 +69,14 @@ impl Connector for Subscriber {
             .finalize();
         self.conn_opts = mqtt::ConnectOptionsBuilder::new()
             .keep_alive_interval(Duration::from_millis(self.config.client.keep_alive))
-            .clean_session(false)
+            .clean_session(self.config.client.clean_session)
             .user_name(self.config.creds.username.clone())
             .password(self.config.creds.password.clone())
             .connect_timeout(Duration::from_millis(self.config.client.timeout))
             .will_message(lwt)
             .finalize();
         debug!(self.logger, "Created connection options");
-        info!(self.logger, "Initialised client");
+        info!(self.logger, "Initialised client with id: {}", self.config.subscriber_connection.id.clone());
     }
     fn connect(&mut self) {
         match self.client.connect(self.conn_opts.clone()) {

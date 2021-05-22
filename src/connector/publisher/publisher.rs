@@ -37,20 +37,30 @@ impl Connector for Publisher {
         debug!(self.logger, "Initialised client with options");
         self.conn_opts = mqtt::ConnectOptionsBuilder::new()
             .keep_alive_interval(Duration::from_millis(self.config.client.keep_alive))
-            .clean_session(true)
+            .clean_session(self.config.client.clean_session)
             .user_name(self.config.creds.username.clone())
             .password(self.config.creds.password.clone())
             .connect_timeout(Duration::from_millis(self.config.client.timeout))
             .finalize();
         debug!(self.logger, "Created connection options");
-        info!(self.logger, "Initialised client");
+        info!(self.logger, "Initialised client with id: {}", self.config.publisher_connection.id.clone());
     }
     fn connect(&mut self) {
-        if let Err(e) = self.client.connect(self.conn_opts.clone()) {
-            error!(self.logger, "Unable to connect to {}", self.config.broker);
-            panic!("{:?}", e);
+        match self.client.connect(self.conn_opts.clone()) {
+            Ok(rsp) => {
+                if let Some(conn_rsp) = rsp.connect_response() {
+                    info!(
+                        self.logger,
+                        "Connected to '{}' with MQTT version {}",
+                        conn_rsp.server_uri, conn_rsp.mqtt_version
+                    );
+                }
+            }
+            Err(e) => {
+                error!(self.logger, "Unable to connect to [{}]: {:?}", self.config.broker, e);
+                panic!("{:?}", e);
+            }
         }
-        info!(self.logger, "Connected to broker");
     }
     fn disconnect(&mut self) {
         match self.client.disconnect(None) {
