@@ -83,28 +83,3 @@ impl Connector for Publisher {
         }
     }
 }
-
-// fn main() {
-    // let mut publisher: Publisher;
-    // publisher.initialize();
-    // publisher.connect();
-    // Create a message and publish it.
-    // Publish message to 'test' and 'hello' topics.
-    // for num in 0..5 {
-    //     let content =  "Hello world! ".to_string() + &num.to_string();
-    //     let mut msg = mqtt::Message::new(DFLT_TOPICS[0], content.clone(), QOS);
-    //     if num % 2 == 0 {
-    //         println!("Publishing messages on the {:?} topic", DFLT_TOPICS[1]);
-    //         msg = mqtt::Message::new(DFLT_TOPICS[1], content.clone(), QOS);
-    //     } else {
-    //         println!("Publishing messages on the {:?} topic", DFLT_TOPICS[0]);
-    //     }
-    //     let tok = publisher.client.publish(msg);
-    //
-    //     if let Err(e) = tok {
-    //         println!("Error sending message: {:?}", e);
-    //         break;
-    //     }
-    // }
-    // publisher.disconnect();
-// }

@@ -24,8 +24,26 @@ use std::thread;
 use std::sync::{Arc, mpsc};
 use std::thread::JoinHandle;
 use std::time::Duration;
+use regex::Regex;
+use lazy_static::lazy_static;
 
+lazy_static! {
+    static ref MODULE_SEPARATOR_REGEX: Regex = Regex::new(r"\s::\s").expect("Could not compile module separator regex");
+}
+
+#[derive(Debug)]
 struct QOSDelayMessage(i32, i32);
+
+fn is_final_message(msg: &str, config: Arc<Config>) -> bool {
+    if !MODULE_SEPARATOR_REGEX.is_match(msg) {
+        return false;
+    }
+    return MODULE_SEPARATOR_REGEX.split(msg)
+        .map(String::from)
+        .collect::<Vec<String>>()[0]
+        .parse::<i32>()
+        .expect("Could not parse message index") == (config.publisher_connection.message_quantity - 1);
+}
 
 fn create_subscriber_thread(logger: &Logger, config: Arc<Config>, rx: Receiver<QOSDelayMessage>) -> JoinHandle<()> {
     thread::spawn({
@@ -36,7 +54,10 @@ fn create_subscriber_thread(logger: &Logger, config: Arc<Config>, rx: Receiver<Q
             let mut subscriber: Subscriber = Subscriber::new(config.clone(), t_logger.new(get_current_thread_id!()));
             #[allow(irrefutable_let_patterns)]
             while let QOSDelayMessage(q, d) = match rx.recv() {
-                Ok(v) => v,
+                Ok(v) => {
+                    info!(t_logger, "Received thead message: {:?}", v);
+                    v
+                },
                 Err(e) => {
                     crit!(t_logger, "Could not receive qos/delay message");
                     panic!("{:?}", e);
@@ -44,7 +65,6 @@ fn create_subscriber_thread(logger: &Logger, config: Arc<Config>, rx: Receiver<Q
             } {
                 message_range_check!((0..=2), q, "QoS", c_qos, subscriber);
                 message_range_check!((0..=500), d, "Delay", c_delay, subscriber);
-                subscriber.disconnect();
                 subscriber = Subscriber::new(config.clone(), t_logger.new(get_current_thread_id!()));
                 subscriber.subscribed_topics = match config.clone().subscriber_connection.topics.get(0) {
                     Some(v) => vec![v.replace("{qos}", format!("{}", c_qos).as_str()).replace("{delay}", format!("{}", c_delay).as_str())],
@@ -58,18 +78,23 @@ fn create_subscriber_thread(logger: &Logger, config: Arc<Config>, rx: Receiver<Q
                 subscriber.connect();
                 subscriber.subscribe_topics(&[2]);
                 subscriber.log_at(Level::Info, "Processing responses...");
-                receiver.iter().for_each(|msg: Option<mqtt::Message>| {
-                    if let Some(msg) = msg {
-                        subscriber.log_at(Level::Info, format!("Received [Message: {}] [Topic: {}] [QoS: {}]", msg.payload_str(), msg.topic(), msg.qos()).as_str());
+                for msg in receiver.iter() {
+                    if let Some(msg_value) = msg {
+                        subscriber.log_at(Level::Info, format!("Received [Message: {}] [Topic: {}] [QoS: {}]", msg_value.payload_str(), msg_value.topic(), msg_value.qos()).as_str());
+                        if is_final_message(msg_value.payload_str().as_ref(), config.clone()) {
+                            subscriber.log_at(Level::Info, "Received final message, breaking from receiver");
+                            break;
+                        }
                     } else if !subscriber.client.is_connected() {
                         if subscriber.try_reconnect() {
                             subscriber.log_at(Level::Info, "Resubscribing to topics...");
-                            subscriber.subscribe_topics(&[2, 2]);
+                            subscriber.subscribe_topics(&[2]);
                         } else {
-                            return;
+                            break;
                         }
                     }
-                });
+                }
+                subscriber.disconnect();
             }
             subscriber.disconnect();
         }
@@ -113,7 +138,7 @@ fn create_publisher_thread(logger: &Logger, config: Arc<Config>, tx: Sender<QOSD
                         qos
                     );
                     send_msg!(msg);
-                    thread::sleep(Duration::from_secs(60));
+                    thread::sleep(Duration::from_secs(60 * 2));
                 }
             }
             publisher.disconnect();

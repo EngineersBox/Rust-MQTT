@@ -97,7 +97,10 @@ macro_rules! join_threads {
 macro_rules! try_except_with_log_action {
     ($matcher:expr, $level:expr, $msg:literal, $t_tx:expr, $log_to:expr) => {
         match $matcher {
-            Ok(value) => value,
+            Ok(value) => {
+                $log_to.log_at(Level::Debug, "Sent thread message");
+                value
+            },
             Err(e) => {
                 $log_to.log_at($level,  format!("{}: {}", $msg, e).as_str());
                 drop($t_tx.clone());

@@ -115,26 +115,3 @@ impl Connector for Subscriber {
         }
     }
 }
-
-// fn main() {
-    // let mut subscriber: Subscriber;
-    // subscriber.initialize();
-    // subscriber.connect();
-    // subscriber.subscribe_topics();
-    //
-    // println!("Processing requests...");
-    // for msg in subscriber.consumer.unwrap().iter() {
-    //     if let Some(msg) = msg {
-    //         println!("{}", msg);
-    //     } else if !subscriber.client.is_connected() {
-    //         if subscriber.try_reconnect() {
-    //             println!("Resubscribe topics...");
-    //             // subscriber.subscribe_topics();
-    //         } else {
-    //             break;
-    //         }
-    //     }
-    // }
-    //
-    // subscriber.disconnect();
-// }
