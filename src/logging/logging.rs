@@ -11,11 +11,25 @@ use regex::Regex;
 use lazy_static::lazy_static;
 
 use crate::get_current_thread_id;
+use chrono::Local;
 
 lazy_static! {
     static ref MODULE_SEPARATOR_REGEX: Regex = Regex::new(r"::").expect("Could not compile module separator regex");
 }
 
+///
+/// Format the message according to the following standard:
+/// `[YY-mm-dd HH:MM:SS.SSS] [MESSAGE] <LEVEL>: <MESSAGE>[, ...<KEY>: <VALUE>]`
+///
+/// # Arguments
+/// * fn_timestamp: Method to get the current timestamp
+/// * rd: RecordDecorator to write formatted message to
+/// * record: Record to retrieve current logger data from (E.g. module, location, etc)
+/// * use_file_location: Whether to specify the destination file
+///
+/// # Returns
+/// `Result<Bool>`: `true` indicating message should be logged, `false` to skip
+///
 pub fn print_msg_header(
     fn_timestamp: &dyn ThreadSafeTimestampFn<Output = io::Result<()>>,
     mut rd: &mut dyn RecordDecorator,
@@ -68,6 +82,16 @@ pub fn print_msg_header(
     Ok(count_rd.count() != 0)
 }
 
+///
+/// Retrieve the current date time in the following format:
+/// `YY-mm-dd HH:MM:SS.SSS`
+///
+/// # Arguments
+/// * io: Writer to forward timestamp to
+///
+/// # Returns
+/// `Result<()>`: Empty result
+///
 pub fn timestamp_utc(io: &mut dyn io::Write) -> io::Result<()> {
     write!(io,
            "{}",
@@ -75,6 +99,17 @@ pub fn timestamp_utc(io: &mut dyn io::Write) -> io::Result<()> {
     )
 }
 
+///
+/// Initialise a logger with a given prefix for the log file. Log file name will be
+/// in the following format:
+/// `<PREFIX>_<TIMESTAMP>.log`
+///
+/// # Arguments
+/// * prefix: A string prefix for the log file name
+///
+/// # Returns
+/// * Logger: A logger instance with two drains for STDOUT and JSON file writer
+///
 pub fn initialize_logging(prefix: String) ->  Logger {
     let log_path: String = String::from("logs/");
     let directory_creation_message: &str;
@@ -99,13 +134,17 @@ pub fn initialize_logging(prefix: String) ->  Logger {
     type FuseJF = Fuse<Json<File>>;
     type FuseMD = Fuse<Mutex<Duplicate<FuseFFTD, FuseJF>>>;
 
+    // Define drain for STDOUT logging
     let d1: FuseFFTD = FullFormat::new(decorator)
         .use_custom_timestamp(timestamp_utc)
         .use_custom_header_print(print_msg_header)
         .build()
         .fuse();
+    // Define drain for JSON file writing
     let d2: FuseJF = Json::default(file).fuse();
+    // Define mutex for drain access to assure thread safety
     let both: FuseMD = Mutex::new(Duplicate::new(d1, d2)).fuse();
+    // Create async access for for logging with Blocking strategy to queue up asynced methods
     let both: Fuse<Async> = Async::new(both)
         .overflow_strategy(OverflowStrategy::Block)
         .build()

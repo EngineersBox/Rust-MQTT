@@ -27,10 +27,31 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 use chrono::Utc;
 
+///
+/// Message to be send in channel between publisher and subscriber
+///
+/// # Structure
+/// 1. QoS level
+/// 2. Delay in milliseconds
+///
+#[derive(Debug)]
 struct QOSDelayMessage(i32, i32);
 
+///
+/// Create a thread with a subscriber initialized within. This will send messages to the publisher via
+/// the channel to indicate QoS and Delay changes.
+///
+/// # Arguments
+/// * logger: Logger instance to log to
+/// * config: Configuration to use to initialize the subscriber
+/// * tx: Sender channel instance to convey delay and qos level changes to publisher
+///
+/// # Returns
+/// * `JoinHandle<()>` for joining thread as blocking
+///
 fn create_subscriber_thread(logger: &Logger, config: Arc<Config>, tx: Sender<QOSDelayMessage>) -> JoinHandle<()> {
     thread::spawn({
+        // Clone these instances since they will be moving scope and will need to persist for the lifetime of the thread
         let t_logger: Logger = logger.clone();
         let t_tx: Sender<QOSDelayMessage> = tx.clone();
         move || {
@@ -38,15 +59,18 @@ fn create_subscriber_thread(logger: &Logger, config: Arc<Config>, tx: Sender<QOS
             subscriber.initialize();
             let receiver: Receiver<Option<mqtt::Message>> = subscriber.consume();
             subscriber.connect();
+            // Subscribe at QoS 2 for both, since this is registered as an upper limit, meaning message at all QoS levels will be accepted.
+            // This just simplifies the log a bit and doesn't introduce any overhead
             subscriber.subscribe_topics(&[2, 2]);
-
             subscriber.log_at(Level::Info, "Processing requests...");
             receiver.iter().for_each(|msg: Option<mqtt::Message>| {
                 if let Some(msg) = msg {
                     subscriber.log_at(Level::Info, format!("Received [Message: {}] [Topic: {}] [QoS: {}]", msg.payload_str(), msg.topic(), msg.qos()).as_str());
                     if msg.topic() == config.subscriber_connection.topics.get(0).unwrap().as_str() {
+                        // Message is a QoS update
                         try_except_with_log_action!(t_tx.send(QOSDelayMessage(msg.qos(), -1)), Level::Error, "Could not send message to publisher thread", t_tx, subscriber);
                     } else if msg.topic() == config.subscriber_connection.topics.get(1).unwrap().as_str() {
+                        // Message is a delay update
                         try_except_with_log_action!(t_tx.send(QOSDelayMessage(-1, msg.payload_str().parse::<i32>().unwrap())), Level::Error, "Could not send message to publisher thread", t_tx, subscriber);
                     }
                 } else if !subscriber.client.is_connected() {
@@ -64,6 +88,18 @@ fn create_subscriber_thread(logger: &Logger, config: Arc<Config>, tx: Sender<QOS
     })
 }
 
+///
+/// Create a thread with a publisher initialized within. This will send `n` messages to the
+/// QoS and Delay levels provided by the received messages from the subscriber via the channel instance.
+///
+/// # Arguments
+/// * logger: Logger instance to log to
+/// * config: Configuration to use to initialize the subscriber
+/// * rx: Receiver channel instance to receive changes to QoS and Delay
+///
+/// # Returns
+/// * `JoinHandle<()>` for joining thread as blocking
+///
 fn create_publisher_thread(logger: &Logger, config: Arc<Config>, rx: Receiver<QOSDelayMessage>) -> JoinHandle<()> {
     thread::spawn({
         let t_logger: Logger = logger.clone();
@@ -81,7 +117,9 @@ fn create_publisher_thread(logger: &Logger, config: Arc<Config>, rx: Receiver<QO
                     panic!("{:?}", e);
                 }
             } {
+                // Verify the QoS is in range and update if so, panic otherwise
                 message_range_check!((0..=2), q, "QoS", c_qos, publisher);
+                // Verify the delay is in range and update if so, panic otherwise
                 message_range_check!((0..=500), d, "Delay", c_delay, publisher);
                 let topic: String = match config.clone().publisher_connection.topics.get(0) {
                     Some(v) => v.replace("{qos}", format!("{}", c_qos).as_str()).replace("{delay}", format!("{}", c_delay).as_str()),
@@ -98,6 +136,7 @@ fn create_publisher_thread(logger: &Logger, config: Arc<Config>, rx: Receiver<QO
                         publisher.log_at(Level::Error, format!("Error sending message: {:?}", e).as_str());
                         break;
                     }
+                    // Sleep the thread for the current delay value, creating the artificial message delay
                     thread::sleep(Duration::from_millis(c_delay as u64))
                 }
             }

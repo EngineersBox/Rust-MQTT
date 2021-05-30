@@ -1,5 +1,11 @@
 use std::fmt;
 
+///
+/// An error indicating the file could not be read
+///
+/// # Properties
+/// * filename: Path to the file in question
+///
 pub(crate) struct FileError {
     pub(crate) filename: String
 }
@@ -10,11 +16,22 @@ impl fmt::Display for FileError {
     }
 }
 
+///
+/// A set of errors related to config properties:
+/// * MissingConfigPropertyError: A required property could not be found
+/// * InvalidConfigPropertyKeyError: The property was invalid or contained unexpected data
+///
 pub enum ConfigPropertiesError {
     MissingConfigPropertyError(MissingConfigPropertyError),
     InvalidConfigPropertyKeyError(InvalidConfigPropertyKeyError)
 }
 
+///
+/// A required property could not be found
+///
+/// # Properties
+/// * property: Key of the property in question
+///
 pub struct MissingConfigPropertyError {
     pub property: String
 }
@@ -25,6 +42,12 @@ impl fmt::Display for MissingConfigPropertyError {
     }
 }
 
+///
+/// The property was invalid or contained unexpected data
+///
+/// # Properties
+/// * key: The property was invalid or contained unexpected data
+///
 pub struct InvalidConfigPropertyKeyError {
     pub key: String
 }
